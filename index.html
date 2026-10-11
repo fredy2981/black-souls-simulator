@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Souls Level-Up Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS for Real-Time P2P Connection -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gothic: {
+                            950: '#0a080c',
+                            900: '#120f17',
+                            800: '#1c1624',
+                            700: '#282035',
+                            600: '#3d304f',
+                            500: '#5c4875',
+                            400: '#8b72aa',
+                            300: '#b8a5d1',
+                            200: '#dfd4ed',
+                            100: '#f5f2f9'
+                        },
+                        blood: {
+                            600: '#8a1c1c',
+                            500: '#a82020',
+                            400: '#cc3333'
+                        },
+                        gold: {
+                            500: '#d4af37',
+                            400: '#e6c55c',
+                            300: '#f3e5ab'
+                        }
+                    },
+                    fontFamily: {
+                        gothic: ['Georgia', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=MedievalSharp&display=swap');
+        
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #0a080c;
+            color: #d4cfdf;
+        }
+        .cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        .medieval {
+            font-family: 'MedievalSharp', cursive;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #120f17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #282035;
+            border-radius: 4px;
+            border: 1px solid #5c4875;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5c4875;
+        }
+        .gothic-border {
+            border: 1px solid #3d304f;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+        }
+        .gothic-btn {
+            background: linear-gradient(to bottom, #282035, #1c1624);
+            border: 1px solid #5c4875;
+            transition: all 0.2s ease;
+        }
+        .gothic-btn:hover {
+            background: linear-gradient(to bottom, #3d304f, #282035);
+            border-color: #b8a5d1;
+            box-shadow: 0 0 10px rgba(184, 165, 209, 0.3);
+        }
+        .blood-btn {
+            background: linear-gradient(to bottom, #8a1c1c, #591010);
+            border: 1px solid #cc3333;
+            color: #fff;
+            transition: all 0.2s ease;
+        }
+        .blood-btn:hover {
+            background: linear-gradient(to bottom, #a82020, #8a1c1c);
+            box-shadow: 0 0 10px rgba(204, 51, 51, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-gothic-950 text-gothic-200">
+
+    <header class="bg-gothic-900 border-b border-gothic-700 sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gothic-800 border border-gold-500 flex items-center justify-center text-gold-400 text-xl shadow-lg">
+                    <i class="fa-solid fa-skull"></i>
+                </div>
+                <div>
+                    <h1 class="cinzel text-xl font-bold tracking-wider text-gold-400">Black Souls</h1>
+                    <p class="text-xs text-gothic-400 italic">Level-Up Simulator & P2P Sync</p>
+                </div>
+            </div>
+
+            <!-- Multiplayer Peer Connection Controls -->
+            <div class="flex items-center space-x-3 bg-gothic-950 px-4 py-2 rounded-lg border border-gothic-700">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blood-500" id="connection-indicator"></span>
+                    <span class="text-xs text-gothic-300 cinzel font-semibold" id="connection-status-text">Disconnected</span>
+                </div>
+                <button onclick="openMultiplayerModal()" class="text-xs px-2.5 py-1 gothic-btn rounded text-gold-400 font-bold transition">
+                    <i class="fa-solid fa-network-wired mr-1"></i> Multiplayer Setup
+                </button>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex space-x-1 md:space-x-2">
+                <button onclick="switchTab('characters')" id="nav-characters" class="px-3 py-1.5 rounded text-sm cinzel font-semibold bg-gothic-700 text-gold-400 border border-gold-500/40 transition">
+                    <i class="fa-solid fa-user-shield mr-1.5"></i> Characters
+                </button>
+                <button onclick="switchTab('classes')" id="nav-classes" class="px-3 py-1.5 rounded text-sm cinzel font-semibold text-gothic-300 hover:text-white hover:bg-gothic-800 transition">
+                    <i class="fa-solid fa-scroll mr-1.5"></i> Classes & Formulas
+                </button>
+                <button onclick="switchTab('stats')" id="nav-stats" class="px-3 py-1.5 rounded text-sm cinzel font-semibold text-gothic-300 hover:text-white hover:bg-gothic-800 transition">
+                    <i class="fa-solid fa-chart-bar mr-1.5"></i> Stat Rules
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+        
+        <!-- CHARACTERS TAB -->
+        <div id="tab-characters" class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 bg-gothic-900 p-4 rounded-xl gothic-border">
+                <div>
+                    <h2 class="cinzel text-lg font-bold text-gold-400">Campaign Roster</h2>
+                    <p class="text-xs text-gothic-400">Manage your characters and sync stats live with your connected partner.</p>
+                </div>
+                <button onclick="openCreateCharacterModal()" class="blood-btn px-4 py-2 rounded-lg text-sm cinzel font-bold flex items-center shadow-lg">
+                    <i class="fa-solid fa-user-plus mr-2"></i> New Character
+                </button>
+            </div>
+
+            <div id="character-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+        </div>
+
+        <!-- CLASSES & FORMULAS TAB -->
+        <div id="tab-classes" class="hidden space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 bg-gothic-900 p-4 rounded-xl gothic-border">
+                <div>
+                    <h2 class="cinzel text-lg font-bold text-gold-400">Class Blueprints & Soul Formulas</h2>
+                    <p class="text-xs text-gothic-400">Configure starting stats and soul cost calculation formulas.</p>
+                </div>
+                <button onclick="openCreateClassModal()" class="blood-btn px-4 py-2 rounded-lg text-sm cinzel font-bold flex items-center shadow-lg">
+                    <i class="fa-solid fa-plus mr-2"></i> Add Custom Class
+                </button>
+            </div>
+
+            <div id="classes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- STAT RULES TAB -->
+        <div id="tab-stats" class="hidden space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 bg-gothic-900 p-4 rounded-xl gothic-border">
+                <div>
+                    <h2 class="cinzel text-lg font-bold text-gold-400">Attribute Definitions & Soft Caps</h2>
+                    <p class="text-xs text-gothic-400">Define character statistics, maximum limits, and soft cap scaling tiers.</p>
+                </div>
+                <button onclick="openCreateStatModal()" class="blood-btn px-4 py-2 rounded-lg text-sm cinzel font-bold flex items-center shadow-lg">
+                    <i class="fa-solid fa-plus mr-2"></i> Add Custom Stat
+                </button>
+            </div>
+
+            <div class="bg-gothic-900 rounded-xl gothic-border overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gothic-800 border-b border-gothic-700 text-xs cinzel text-gold-400 uppercase tracking-wider">
+                                <th class="p-4">Stat Name</th>
+                                <th class="p-4">Abbr</th>
+                                <th class="p-4">Base Value</th>
+                                <th class="p-4">Max Cap</th>
+                                <th class="p-4">Soft Caps</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-table-body" class="divide-y divide-gothic-800 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Multiplayer Setup Modal -->
+    <div id="multiplayer-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-gothic-900 border border-gold-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5">
+            <div class="flex justify-between items-center border-b border-gothic-700 pb-3">
+                <h3 class="cinzel font-bold text-gold-400 text-lg"><i class="fa-solid fa-network-wired mr-2"></i> P2P Multiplayer Connection</h3>
+                <button onclick="closeMultiplayerModal()" class="text-gothic-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-4 text-xs text-gothic-300">
+                <div class="bg-gothic-950 p-3 rounded-lg border border-gothic-800 space-y-2">
+                    <span class="cinzel font-semibold text-gold-400 block">Your Connection ID:</span>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="my-peer-id" readonly class="w-full bg-gothic-900 border border-gothic-700 rounded px-2 py-1.5 text-white font-mono text-xs select-all" value="Initializing...">
+                        <button onclick="copyMyId()" class="gothic-btn px-3 py-1.5 rounded text-gold-300 whitespace-nowrap"><i class="fa-solid fa-copy mr-1"></i> Copy</button>
+                    </div>
+                    <p class="text-gothic-400 text-[11px]">Send this ID to your friend so they can connect to you.</p>
+                </div>
+
+                <div class="bg-gothic-950 p-3 rounded-lg border border-gothic-800 space-y-2">
+                    <span class="cinzel font-semibold text-gold-400 block">Connect to Friend:</span>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="friend-peer-id" class="w-full bg-gothic-900 border border-gothic-700 rounded px-2 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-gold-500" placeholder="Paste friend's ID here">
+                        <button onclick="connectToFriend()" class="blood-btn px-3 py-1.5 rounded font-bold whitespace-nowrap"><i class="fa-solid fa-plug mr-1"></i> Connect</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeMultiplayerModal()" class="px-4 py-2 gothic-btn rounded-lg text-xs cinzel font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Character Modal -->
+    <div id="character-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-gothic-900 border border-gold-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gothic-700 pb-3">
+                <h3 id="character-modal-title" class="cinzel font-bold text-gold-400 text-lg"><i class="fa-solid fa-user-shield mr-2"></i> Create New Character</h3>
+                <button onclick="closeCreateCharacterModal()" class="text-gothic-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="character-form" onsubmit="saveCharacter(event)" class="space-y-4">
+                <input type="hidden" id="char-id">
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Character Name</label>
+                    <input type="text" id="char-name" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500" placeholder="e.g. Red Hood">
+                </div>
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Class Blueprint</label>
+                    <select id="char-class" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500"></select>
+                </div>
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Avatar Image (Upload)</label>
+                    <input type="file" id="char-avatar-file" accept="image/*" onchange="handleImageUpload(event)" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-gothic-300 text-xs file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-gothic-700 file:text-gold-400 hover:file:bg-gothic-600">
+                    <input type="hidden" id="char-avatar-url">
+                    <div id="avatar-preview-container" class="mt-2 hidden flex items-center space-x-3">
+                        <img id="avatar-preview" src="" alt="Preview" class="w-12 h-12 rounded-full object-cover border border-gold-500">
+                        <span class="text-xs text-emerald-400"><i class="fa-solid fa-check mr-1"></i> Avatar loaded successfully</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Starting Souls</label>
+                    <input type="number" id="char-souls" value="0" min="0" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gothic-700">
+                    <button type="button" onclick="closeCreateCharacterModal()" class="px-4 py-2 gothic-btn rounded-lg text-xs cinzel font-semibold">Cancel</button>
+                    <button type="submit" class="blood-btn px-4 py-2 rounded-lg text-xs cinzel font-bold shadow-lg">Save Character</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Class Modal -->
+    <div id="class-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-gothic-900 border border-gold-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gothic-700 pb-3">
+                <h3 class="cinzel font-bold text-gold-400 text-lg"><i class="fa-solid fa-scroll mr-2"></i> Configure Class Blueprint</h3>
+                <button onclick="closeCreateClassModal()" class="text-gothic-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="class-form" onsubmit="saveClass(event)" class="space-y-4">
+                <input type="hidden" id="class-id">
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Class Name</label>
+                    <input type="text" id="class-name" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500" placeholder="e.g. Heretic">
+                </div>
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Description</label>
+                    <textarea id="class-desc" rows="2" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500" placeholder="Brief lore..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Soul Cost Formula Type</label>
+                    <select id="class-formula-type" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                        <option value="bs1">Black Souls 1 (Standard Exponential)</option>
+                        <option value="bs2">Black Souls 2 (Steep Escalation)</option>
+                        <option value="linear">Linear Scaling</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Base Cost</label>
+                        <input type="number" id="class-base-cost" value="100" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Scaling Factor</label>
+                        <input type="number" step="0.01" id="class-scaling" value="1.05" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gothic-700">
+                    <button type="button" onclick="closeCreateClassModal()" class="px-4 py-2 gothic-btn rounded-lg text-xs cinzel font-semibold">Cancel</button>
+                    <button type="submit" class="blood-btn px-4 py-2 rounded-lg text-xs cinzel font-bold shadow-lg">Save Class</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Stat Modal -->
+    <div id="stat-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-gothic-900 border border-gold-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-gothic-700 pb-3">
+                <h3 class="cinzel font-bold text-gold-400 text-lg"><i class="fa-solid fa-chart-bar mr-2"></i> Configure Attribute</h3>
+                <button onclick="closeCreateStatModal()" class="text-gothic-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="stat-form" onsubmit="saveStat(event)" class="space-y-4">
+                <input type="hidden" id="stat-id">
+                <div>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Stat Name</label>
+                    <input type="text" id="stat-name" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500" placeholder="e.g. Vitality">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Abbreviation</label>
+                        <input type="text" id="stat-abbr" maxlength="4" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500 uppercase" placeholder="VIT">
+                    </div>
+                    <div>
+                        <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Base Default</label>
+                        <input type="number" id="stat-base" value="10" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Max Cap</label>
+                        <input type="number" id="stat-max" value="99" required class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Soft Cap (comma separated)</label>
+                        <input type="text" id="stat-softcaps" value="30, 60" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gothic-700">
+                    <button type="button" onclick="closeCreateStatModal()" class="px-4 py-2 gothic-btn rounded-lg text-xs cinzel font-semibold">Cancel</button>
+                    <button type="submit" class="blood-btn px-4 py-2 rounded-lg text-xs cinzel font-bold shadow-lg">Save Stat</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gothic-950 border border-gold-500 text-gold-400 px-4 py-3 rounded-xl shadow-2xl z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-3">
+        <i class="fa-solid fa-bell text-gold-500"></i>
+        <span id="toast-message" class="text-xs cinzel font-semibold">Notification message here</span>
+    </div>
+
+    <script>
+        const defaultClasses = [
+            { id: 'class_knight', name: 'Knight of Grimm', desc: 'A valiant wanderer clad in heavy steel, balanced for physical combat.', formulaType: 'bs1', baseCost: 100, scaling: 1.05 },
+            { id: 'class_scholar', name: 'Heretic Scholar', desc: 'A seeker of forbidden knowledge with heightened arcane intellect.', formulaType: 'bs2', baseCost: 120, scaling: 1.08 },
+            { id: 'class_wanderer', name: 'Executioner', desc: 'A swift and merciless blade specialized in critical strikes.', formulaType: 'linear', baseCost: 90, scaling: 1.04 }
+        ];
+
+        const defaultStats = [
+            { id: 'stat_vit', name: 'Vitality', abbr: 'VIT', base: 10, max: 99, softCaps: [30, 50] },
+            { id: 'stat_att', name: 'Attunement', abbr: 'ATT', base: 10, max: 99, softCaps: [20, 40] },
+            { id: 'stat_end', name: 'Endurance', abbr: 'END', base: 10, max: 99, softCaps: [40] },
+            { id: 'stat_str', name: 'Strength', abbr: 'STR', base: 10, max: 99, softCaps: [40, 60] },
+            { id: 'stat_dex', name: 'Dexterity', abbr: 'DEX', base: 10, max: 99, softCaps: [40, 60] },
+            { id: 'stat_lust', name: 'Lust', abbr: 'LST', base: 10, max: 99, softCaps: [30, 69] }
+        ];
+
+        let state = {
+            classes: defaultClasses,
+            stats: defaultStats,
+            characters: []
+        };
+
+        let peer = null;
+        let conn = null;
+        let isHost = false;
+
+        function initPeer() {
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                document.getElementById('my-peer-id').value = id;
+                setConnectionStatus('ready', 'Ready to Connect');
+            });
+
+            peer.on('connection', (incomingConn) => {
+                conn = incomingConn;
+                isHost = true;
+                setupConnectionHandlers();
+                setConnectionStatus('connected', 'Connected');
+                showToast('Friend connected to your session!');
+                // Send current state to newly connected friend
+                sendState();
+            });
+
+            peer.on('error', (err) => {
+                console.error(err);
+                setConnectionStatus('error', 'Connection Error');
+            });
+        }
+
+        window.connectToFriend = function() {
+            const friendId = document.getElementById('friend-peer-id').value.trim();
+            if (!friendId) {
+                showToast("Please enter your friend's ID.");
+                return;
+            }
+
+            setConnectionStatus('connecting', 'Connecting...');
+            conn = peer.connect(friendId);
+            isHost = false;
+            setupConnectionHandlers();
+        }
+
+        function setupConnectionHandlers() {
+            conn.on('open', () => {
+                setConnectionStatus('connected', 'Connected');
+                showToast('Successfully connected to friend!');
+                closeMultiplayerModal();
+            });
+
+            conn.on('data', (data) => {
+                if (data && data.type === 'STATE_SYNC') {
+                    state = data.payload;
+                    saveLocalOnly();
+                    renderAll();
+                    showToast('Sync received from partner.');
+                }
+            });
+
+            conn.on('close', () => {
+                setConnectionStatus('disconnected', 'Disconnected');
+                showToast('Partner disconnected.');
+            });
+        }
+
+        function sendState() {
+            if (conn && conn.open) {
+                conn.send({ type: 'STATE_SYNC', payload: state });
+            }
+        }
+
+        function setConnectionStatus(status, text) {
+            const indicator = document.getElementById('connection-indicator');
+            const label = document.getElementById('connection-status-text');
+            label.innerText = text;
+
+            if (status === 'connected') {
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+            } else if (status === 'connecting') {
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse';
+            } else {
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-blood-500';
+            }
+        }
+
+        function saveLocalOnly() {
+            localStorage.setItem('bs_local_save', JSON.stringify(state));
+        }
+
+        function updateAndSync() {
+            saveLocalOnly();
+            renderAll();
+            sendState();
+        }
+
+        window.copyMyId = function() {
+            const copyText = document.getElementById('my-peer-id');
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            showToast('Copied your ID to clipboard!');
+        }
+
+        window.openMultiplayerModal = function() {
+            document.getElementById('multiplayer-modal').classList.remove('hidden');
+        }
+        window.closeMultiplayerModal = function() {
+            document.getElementById('multiplayer-modal').classList.add('hidden');
+        }
+
+        function renderAll() {
+            renderCharacters();
+            renderClasses();
+            renderStatsTable();
+            populateClassDropdown();
+        }
+
+        function renderCharacters() {
+            const grid = document.getElementById('character-grid');
+            if (!state.characters || state.characters.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full bg-gothic-900 border border-gothic-700 rounded-xl p-8 text-center space-y-3">
+                        <i class="fa-solid fa-ghost text-4xl text-gothic-500"></i>
+                        <p class="cinzel text-gothic-300 text-base">No characters found.</p>
+                        <p class="text-xs text-gothic-400">Click "New Character" above to add your first campaign entry.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = state.characters.map(char => {
+                const charClass = state.classes.find(c => c.id === char.classId) || state.classes[0] || { name: 'Unknown', baseCost: 100, scaling: 1.05, formulaType: 'bs1' };
+                const totalLevel = calculateTotalLevel(char);
+                const nextCost = calculateNextLevelCost(totalLevel, charClass);
+                const avatarSrc = char.avatar || 'https://placehold.co/120x120/1c1624/d4af37?text=Soul';
+
+                return `
+                    <div class="bg-gothic-900 border border-gothic-700 rounded-xl p-5 shadow-xl space-y-4 relative overflow-hidden">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-center space-x-3">
+                                <img src="${avatarSrc}" alt="${char.name}" class="w-14 h-14 rounded-full object-cover border-2 border-gold-500/60 shadow-md">
+                                <div>
+                                    <h3 class="cinzel font-bold text-gold-400 text-lg">${escapeHtml(char.name)}</h3>
+                                    <p class="text-xs text-gothic-400"><i class="fa-solid fa-scroll mr-1"></i> ${escapeHtml(charClass.name)} &bull; Level <span class="text-white font-bold">${totalLevel}</span></p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-1">
+                                <button onclick="openEditCharacterModal('${char.id}')" title="Edit" class="p-2 text-gothic-400 hover:text-gold-400 transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="deleteCharacter('${char.id}')" title="Delete" class="p-2 text-gothic-400 hover:text-blood-400 transition"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="bg-gothic-950 p-3 rounded-lg border border-gothic-800 flex items-center justify-between gap-2">
+                            <div>
+                                <span class="text-xs cinzel text-gothic-400 block">Souls Available</span>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <input type="number" value="${char.souls}" onchange="updateSouls('${char.id}', this.value)" class="bg-gothic-900 border border-gothic-700 rounded px-2 py-1 text-gold-400 font-mono text-sm w-28 focus:outline-none focus:border-gold-500">
+                                    <button onclick="addSouls('${char.id}', 1000)" class="text-xs px-2 py-1 gothic-btn rounded text-gold-300">+1k</button>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs cinzel text-gothic-400 block">Next Level Cost</span>
+                                <span class="text-sm font-mono text-gothic-200 font-bold ${char.souls >= nextCost ? 'text-emerald-400' : 'text-gothic-400'}">${nextCost} Souls</span>
+                                <button onclick="levelUpCharacter('${char.id}')" class="mt-1 block blood-btn px-3 py-1 rounded text-xs cinzel font-bold shadow ${char.souls >= nextCost ? '' : 'opacity-55 cursor-not-allowed'}">
+                                    <i class="fa-solid fa-arrow-up mr-1"></i> Level Up
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center text-xs cinzel text-gothic-400">
+                                <span>Attributes</span>
+                                <span>Allocated Points</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                ${state.stats.map(stat => {
+                                    const val = char.stats[stat.id] !== undefined ? char.stats[stat.id] : stat.base;
+                                    const isMax = val >= stat.max;
+                                    return `
+                                        <div class="bg-gothic-950 p-2 rounded border border-gothic-800 flex items-center justify-between">
+                                            <div>
+                                                <span class="text-xs font-semibold text-gothic-300 block">${stat.abbr}</span>
+                                                <span class="text-xs text-gothic-500">${stat.name}</span>
+                                            </div>
+                                            <div class="flex items-center space-x-1">
+                                                <button onclick="adjustStat('${char.id}', '${stat.id}', -1)" ${val <= stat.base ? 'disabled' : ''} class="w-5 h-5 rounded bg-gothic-800 text-gothic-300 hover:text-white disabled:opacity-30 flex items-center justify-center text-xs">-</button>
+                                                <span class="text-sm font-mono font-bold text-white w-6 text-center">${val}</span>
+                                                <button onclick="adjustStat('${char.id}', '${stat.id}', 1)" ${isMax ? 'disabled' : ''} class="w-5 h-5 rounded bg-gothic-800 text-gothic-300 hover:text-white disabled:opacity-30 flex items-center justify-center text-xs">+</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderClasses() {
+            const grid = document.getElementById('classes-grid');
+            grid.innerHTML = state.classes.map(cls => `
+                <div class="bg-gothic-900 border border-gothic-700 rounded-xl p-5 shadow-xl space-y-3 relative">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="cinzel font-bold text-gold-400 text-base">${escapeHtml(cls.name)}</h3>
+                            <span class="text-xs px-2 py-0.5 rounded bg-gothic-800 text-gold-300 border border-gothic-700 font-mono">Formula: ${cls.formulaType.toUpperCase()}</span>
+                        </div>
+                        <div class="flex space-x-1">
+                            <button onclick="openEditClassModal('${cls.id}')" class="p-1.5 text-gothic-400 hover:text-gold-400"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteClass('${cls.id}')" class="p-1.5 text-gothic-400 hover:text-blood-400"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gothic-300 italic">${escapeHtml(cls.desc || 'No description provided.')}</p>
+                    <div class="text-xs space-y-1 pt-2 border-t border-gothic-800 text-gothic-400">
+                        <div>Base Cost: <span class="text-white font-mono">${cls.baseCost}</span></div>
+                        <div>Scaling Factor: <span class="text-white font-mono">${cls.scaling}</span></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderStatsTable() {
+            const tbody = document.getElementById('stats-table-body');
+            tbody.innerHTML = state.stats.map(st => `
+                <tr class="hover:bg-gothic-800/50 transition">
+                    <td class="p-4 cinzel font-semibold text-white">${escapeHtml(st.name)}</td>
+                    <td class="p-4 font-mono text-gold-400">${escapeHtml(st.abbr)}</td>
+                    <td class="p-4 font-mono text-gothic-300">${st.base}</td>
+                    <td class="p-4 font-mono text-gothic-300">${st.max}</td>
+                    <td class="p-4 font-mono text-gothic-400">${Array.isArray(st.softCaps) ? st.softCaps.join(', ') : st.softCaps}</td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="openEditStatModal('${st.id}')" class="text-gothic-400 hover:text-gold-400"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteStat('${st.id}')" class="text-gothic-400 hover:text-blood-400"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function populateClassDropdown() {
+            const select = document.getElementById('char-class');
+            select.innerHTML = state.classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        }
+
+        function calculateTotalLevel(char) {
+            let total = 0;
+            state.stats.forEach(st => {
+                const val = char.stats[st.id] !== undefined ? char.stats[st.id] : st.base;
+                total += (val - st.base);
+            });
+            return total + 1;
+        }
+
+        function calculateNextLevelCost(level, cls) {
+            const base = Number(cls.baseCost) || 100;
+            const scale = Number(cls.scaling) || 1.05;
+            if (cls.formulaType === 'bs2') {
+                return Math.floor(base * Math.pow(scale, level * 1.15));
+            } else if (cls.formulaType === 'linear') {
+                return Math.floor(base + (level * 50 * scale));
+            } else {
+                return Math.floor(base * Math.pow(scale, level));
+            }
+        }
+
+        window.switchTab = function(tabName) {
+            ['characters', 'classes', 'stats'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).classList.remove('bg-gothic-700', 'text-gold-400', 'border', 'border-gold-500/40');
+                document.getElementById(`nav-${t}`).classList.add('text-gothic-300', 'hover:text-white', 'hover:bg-gothic-800');
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            activeBtn.classList.remove('text-gothic-300', 'hover:text-white', 'hover:bg-gothic-800');
+            activeBtn.classList.add('bg-gothic-700', 'text-gold-400', 'border', 'border-gold-500/40');
+        }
+
+        window.updateSouls = function(charId, val) {
+            const char = state.characters.find(c => c.id === charId);
+            if (char) {
+                char.souls = Math.max(0, parseInt(val) || 0);
+                updateAndSync();
+            }
+        }
+
+        window.addSouls = function(charId, amount) {
+            const char = state.characters.find(c => c.id === charId);
+            if (char) {
+                char.souls = (char.souls || 0) + amount;
+                updateAndSync();
+                showToast(`Added ${amount} souls!`);
+            }
+        }
+
+        window.levelUpCharacter = function(charId) {
+            const char = state.characters.find(c => c.id === charId);
+            if (!char) return;
+            const cls = state.classes.find(c => c.id === char.classId) || state.classes[0];
+            const totalLevel = calculateTotalLevel(char);
+            const cost = calculateNextLevelCost(totalLevel, cls);
+
+            if ((char.souls || 0) < cost) {
+                showToast('Not enough souls to level up!');
+                return;
+            }
+
+            char.souls -= cost;
+            const firstStat = state.stats[0];
+            if (firstStat) {
+                if (!char.stats) char.stats = {};
+                const currentVal = char.stats[firstStat.id] !== undefined ? char.stats[firstStat.id] : firstStat.base;
+                if (currentVal < firstStat.max) {
+                    char.stats[firstStat.id] = currentVal + 1;
+                }
+            }
+
+            updateAndSync();
+            showToast(`Leveled up to Level ${totalLevel + 1}!`);
+        }
+
+        window.adjustStat = function(charId, statId, delta) {
+            const char = state.characters.find(c => c.id === charId);
+            if (!char) return;
+            if (!char.stats) char.stats = {};
+            const st = state.stats.find(s => s.id === statId);
+            if (!st) return;
+
+            const current = char.stats[statId] !== undefined ? char.stats[statId] : st.base;
+            const next = current + delta;
+            if (next >= st.base && next <= st.max) {
+                char.stats[statId] = next;
+                updateAndSync();
+            }
+        }
+
+        window.handleImageUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64String = e.target.result;
+                document.getElementById('char-avatar-url').value = base64String;
+                document.getElementById('avatar-preview').src = base64String;
+                document.getElementById('avatar-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.openCreateCharacterModal = function() {
+            document.getElementById('char-id').value = '';
+            document.getElementById('char-name').value = '';
+            document.getElementById('char-souls').value = '0';
+            document.getElementById('char-avatar-url').value = '';
+            document.getElementById('avatar-preview-container').classList.add('hidden');
+            document.getElementById('character-modal-title').innerHTML = '<i class="fa-solid fa-user-shield mr-2"></i> Create New Character';
+            document.getElementById('character-modal').classList.remove('hidden');
+        }
+
+        window.openEditCharacterModal = function(id) {
+            const char = state.characters.find(c => c.id === id);
+            if (!char) return;
+            document.getElementById('char-id').value = char.id;
+            document.getElementById('char-name').value = char.name;
+            document.getElementById('char-class').value = char.classId;
+            document.getElementById('char-souls').value = char.souls || 0;
+            document.getElementById('char-avatar-url').value = char.avatar || '';
+            if (char.avatar) {
+                document.getElementById('avatar-preview').src = char.avatar;
+                document.getElementById('avatar-preview-container').classList.remove('hidden');
+            } else {
+                document.getElementById('avatar-preview-container').classList.add('hidden');
+            }
+            document.getElementById('character-modal-title').innerHTML = '<i class="fa-solid fa-pen mr-2"></i> Edit Character';
+            document.getElementById('character-modal').classList.remove('hidden');
+        }
+        window.closeCreateCharacterModal = function() { document.getElementById('character-modal').classList.add('hidden'); }
+
+        window.saveCharacter = function(e) {
+            e.preventDefault();
+            const id = document.getElementById('char-id').value;
+            const name = document.getElementById('char-name').value;
+            const classId = document.getElementById('char-class').value;
+            const souls = parseInt(document.getElementById('char-souls').value) || 0;
+            const avatar = document.getElementById('char-avatar-url').value;
+
+            if (id) {
+                const char = state.characters.find(c => c.id === id);
+                if (char) {
+                    char.name = name;
+                    char.classId = classId;
+                    char.souls = souls;
+                    if (avatar) char.avatar = avatar;
+                }
+            } else {
+                state.characters.push({
+                    id: 'char_' + Date.now(),
+                    name,
+                    classId,
+                    souls,
+                    avatar: avatar || '',
+                    stats: {}
+                });
+            }
+
+            updateAndSync();
+            closeCreateCharacterModal();
+            showToast('Character saved.');
+        }
+
+        window.deleteCharacter = function(id) {
+            if (confirm('Banish this character?')) {
+                state.characters = state.characters.filter(c => c.id !== id);
+                updateAndSync();
+                showToast('Character banished.');
+            }
+        }
+
+        window.openCreateClassModal = function() {
+            document.getElementById('class-id').value = '';
+            document.getElementById('class-name').value = '';
+            document.getElementById('class-desc').value = '';
+            document.getElementById('class-base-cost').value = '100';
+            document.getElementById('class-scaling').value = '1.05';
+            document.getElementById('class-modal').classList.remove('hidden');
+        }
+        window.openEditClassModal = function(id) {
+            const cls = state.classes.find(c => c.id === id);
+            if (!cls) return;
+            document.getElementById('class-id').value = cls.id;
+            document.getElementById('class-name').value = cls.name;
+            document.getElementById('class-desc').value = cls.desc || '';
+            document.getElementById('class-formula-type').value = cls.formulaType || 'bs1';
+            document.getElementById('class-base-cost').value = cls.baseCost;
+            document.getElementById('class-scaling').value = cls.scaling;
+            document.getElementById('class-modal').classList.remove('hidden');
+        }
+        window.closeCreateClassModal = function() { document.getElementById('class-modal').classList.add('hidden'); }
+
+        window.saveClass = function(e) {
+            e.preventDefault();
+            const id = document.getElementById('class-id').value;
+            const name = document.getElementById('class-name').value;
+            const desc = document.getElementById('class-desc').value;
+            const formulaType = document.getElementById('class-formula-type').value;
+            const baseCost = parseFloat(document.getElementById('class-base-cost').value) || 100;
+            const scaling = parseFloat(document.getElementById('class-scaling').value) || 1.05;
+
+            if (id) {
+                const cls = state.classes.find(c => c.id === id);
+                if (cls) {
+                    cls.name = name;
+                    cls.desc = desc;
+                    cls.formulaType = formulaType;
+                    cls.baseCost = baseCost;
+                    cls.scaling = scaling;
+                }
+            } else {
+                state.classes.push({ id: 'class_' + Date.now(), name, desc, formulaType, baseCost, scaling });
+            }
+
+            updateAndSync();
+            closeCreateClassModal();
+            showToast('Class blueprint saved.');
+        }
+
+        window.deleteClass = function(id) {
+            if (state.classes.length <= 1) {
+                showToast('Must keep at least one class.');
+                return;
+            }
+            state.classes = state.classes.filter(c => c.id !== id);
+            updateAndSync();
+            showToast('Class deleted.');
+        }
+
+        window.openCreateStatModal = function() {
+            document.getElementById('stat-id').value = '';
+            document.getElementById('stat-name').value = '';
+            document.getElementById('stat-abbr').value = '';
+            document.getElementById('stat-base').value = '10';
+            document.getElementById('stat-max').value = '99';
+            document.getElementById('stat-softcaps').value = '30, 60';
+            document.getElementById('stat-modal').classList.remove('hidden');
+        }
+        window.openEditStatModal = function(id) {
+            const st = state.stats.find(s => s.id === id);
+            if (!st) return;
+            document.getElementById('stat-id').value = st.id;
+            document.getElementById('stat-name').value = st.name;
+            document.getElementById('stat-abbr').value = st.abbr;
+            document.getElementById('stat-base').value = st.base;
+            document.getElementById('stat-max').value = st.max;
+            document.getElementById('stat-softcaps').value = Array.isArray(st.softCaps) ? st.softCaps.join(', ') : st.softCaps;
+            document.getElementById('stat-modal').classList.remove('hidden');
+        }
+        window.closeCreateStatModal = function() { document.getElementById('stat-modal').classList.add('hidden'); }
+
+        window.saveStat = function(e) {
+            e.preventDefault();
+            const id = document.getElementById('stat-id').value;
+            const name = document.getElementById('stat-name').value;
+            const abbr = document.getElementById('stat-abbr').value.toUpperCase();
+            const base = parseInt(document.getElementById('stat-base').value) || 10;
+            const max = parseInt(document.getElementById('stat-max').value) || 99;
+            const softCapsRaw = document.getElementById('stat-softcaps').value;
+            const softCaps = softCapsRaw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+
+            if (id) {
+                const st = state.stats.find(s => s.id === id);
+                if (st) {
+                    st.name = name;
+                    st.abbr = abbr;
+                    st.base = base;
+                    st.max = max;
+                    st.softCaps = softCaps;
+                }
+            } else {
+                state.stats.push({ id: 'stat_' + Date.now(), name, abbr, base, max, softCaps });
+            }
+
+            updateAndSync();
+            closeCreateStatModal();
+            showToast('Attribute saved.');
+        }
+
+        window.deleteStat = function(id) {
+            if (state.stats.length <= 1) {
+                showToast('Must keep at least one attribute.');
+                return;
+            }
+            state.stats = state.stats.filter(s => s.id !== id);
+            updateAndSync();
+            showToast('Attribute removed.');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        window.onload = function() {
+            const saved = localStorage.getItem('bs_local_save');
+            if (saved) {
+                try { state = JSON.parse(saved); } catch(e) {}
+            }
+            renderAll();
+            initPeer();
+        }
+    </script>
+</body>
+</html>
