@@ -432,12 +432,22 @@
         function setupConnectionHandlers() {
             conn.on('open', () => {
                 setConnectionStatus('connected', 'Connected');
-                showToast('Successfully connected to friend!');
+                showToast('Successfully connected to partner!');
                 closeMultiplayerModal();
+                if (isHost) {
+                    sendState();
+                }
             });
 
             conn.on('data', (data) => {
                 if (data && data.type === 'STATE_SYNC') {
+                    // Host-Authoritative Protection: Reject empty peer updates if host has characters
+                    if (isHost) {
+                        if (state.characters.length > 0 && (!data.payload.characters || data.payload.characters.length === 0)) {
+                            sendState(); // Force host state back to the client
+                            return;
+                        }
+                    }
                     state = data.payload;
                     saveLocalOnly();
                     renderAll();
