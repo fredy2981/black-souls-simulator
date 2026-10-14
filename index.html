@@ -141,14 +141,40 @@
         </div>
     </header>
 
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
         
+        <!-- GLOBAL SOUL POOL DASHBOARD -->
+        <div class="bg-gothic-900 border border-gold-500/40 rounded-xl p-4 md:p-5 gothic-border flex flex-wrap items-center justify-between gap-4 shadow-2xl">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-gothic-950 border border-gold-500/60 flex items-center justify-center text-gold-400 text-2xl shadow-inner">
+                    <i class="fa-solid fa-fire-flame-curved"></i>
+                </div>
+                <div>
+                    <span class="text-xs cinzel font-semibold text-gold-400 uppercase tracking-widest block">Global Soul Bank</span>
+                    <div class="flex items-baseline space-x-2 mt-0.5">
+                        <span id="global-soul-display" class="text-2xl font-mono font-bold text-white">0</span>
+                        <span class="text-xs text-gothic-400 font-mono">Souls Available</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center space-x-1 bg-gothic-950 p-1.5 rounded-lg border border-gothic-800">
+                    <input type="number" id="global-soul-input" value="0" min="0" class="bg-gothic-900 border border-gothic-700 rounded px-2 py-1 text-gold-400 font-mono text-xs w-28 focus:outline-none focus:border-gold-500" placeholder="Set souls">
+                    <button onclick="setGlobalSouls()" class="gothic-btn px-2.5 py-1 rounded text-xs text-gold-300 font-semibold whitespace-nowrap">Set</button>
+                </div>
+                <button onclick="addGlobalSouls(1000)" class="blood-btn px-3 py-1.5 rounded text-xs cinzel font-bold shadow">+1,000</button>
+                <button onclick="addGlobalSouls(10000)" class="blood-btn px-3 py-1.5 rounded text-xs cinzel font-bold shadow">+10,000</button>
+                <button onclick="addGlobalSouls(100000)" class="blood-btn px-3 py-1.5 rounded text-xs cinzel font-bold shadow">+100,000</button>
+            </div>
+        </div>
+
         <!-- CHARACTERS TAB -->
         <div id="tab-characters" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-4 bg-gothic-900 p-4 rounded-xl gothic-border">
                 <div>
                     <h2 class="cinzel text-lg font-bold text-gold-400">Campaign Roster</h2>
-                    <p class="text-xs text-gothic-400">Manage your characters and sync stats live with your connected partner.</p>
+                    <p class="text-xs text-gothic-400">Level up characters using your global soul pool or adjust individual values.</p>
                 </div>
                 <button onclick="openCreateCharacterModal()" class="blood-btn px-4 py-2 rounded-lg text-sm cinzel font-bold flex items-center shadow-lg">
                     <i class="fa-solid fa-user-plus mr-2"></i> New Character
@@ -266,7 +292,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Starting Souls</label>
+                    <label class="block text-xs cinzel font-semibold text-gothic-300 mb-1">Personal Held Souls (Optional)</label>
                     <input type="number" id="char-souls" value="0" min="0" class="w-full bg-gothic-950 border border-gothic-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
                 </div>
                 <div class="flex justify-end space-x-3 pt-4 border-t border-gothic-700">
@@ -384,6 +410,7 @@
         ];
 
         let state = {
+            globalSouls: 0,
             classes: defaultClasses,
             stats: defaultStats,
             characters: []
@@ -441,10 +468,9 @@
 
             conn.on('data', (data) => {
                 if (data && data.type === 'STATE_SYNC') {
-                    // Host-Authoritative Protection: Reject empty peer updates if host has characters
                     if (isHost) {
                         if (state.characters.length > 0 && (!data.payload.characters || data.payload.characters.length === 0)) {
-                            sendState(); // Force host state back to the client
+                            sendState();
                             return;
                         }
                     }
@@ -505,7 +531,23 @@
             document.getElementById('multiplayer-modal').classList.add('hidden');
         }
 
+        window.addGlobalSouls = function(amount) {
+            state.globalSouls = (state.globalSouls || 0) + amount;
+            updateAndSync();
+            showToast(`Added ${amount.toLocaleString()} souls to global bank!`);
+        }
+
+        window.setGlobalSouls = function() {
+            const inputVal = parseInt(document.getElementById('global-soul-input').value);
+            if (!isNaN(inputVal) && inputVal >= 0) {
+                state.globalSouls = inputVal;
+                updateAndSync();
+                showToast(`Global soul pool set to ${inputVal.toLocaleString()}`);
+            }
+        }
+
         function renderAll() {
+            document.getElementById('global-soul-display').innerText = (state.globalSouls || 0).toLocaleString();
             renderCharacters();
             renderClasses();
             renderStatsTable();
@@ -530,7 +572,9 @@
                 const totalLevel = calculateTotalLevel(char);
                 const nextCost = calculateNextLevelCost(totalLevel, charClass);
                 const avatarSrc = char.avatar || 'https://placehold.co/120x120/1c1624/d4af37?text=Soul';
-                const totalSoulsCollected = char.totalSoulsCollected !== undefined ? char.totalSoulsCollected : (char.souls || 0);
+                const canAffordGlobal = (state.globalSouls || 0) >= nextCost;
+                const canAffordPersonal = (char.souls || 0) >= nextCost;
+                const canAfford = canAffordGlobal || canAffordPersonal;
 
                 return `
                     <div class="bg-gothic-900 border border-gothic-700 rounded-xl p-5 shadow-xl space-y-4 relative overflow-hidden">
@@ -548,30 +592,24 @@
                             </div>
                         </div>
 
-                        <!-- Souls Dashboard -->
+                        <!-- Level Up Control -->
                         <div class="bg-gothic-950 p-3 rounded-lg border border-gothic-800 space-y-3">
-                            <div class="grid grid-cols-2 gap-2 pb-2 border-b border-gothic-800/80">
-                                <div>
-                                    <span class="text-[11px] cinzel text-gothic-400 block">Current Souls</span>
-                                    <div class="flex items-center space-x-1.5 mt-1">
-                                        <input type="number" value="${char.souls}" onchange="updateSouls('${char.id}', this.value)" class="bg-gothic-900 border border-gothic-700 rounded px-2 py-1 text-gold-400 font-mono text-xs w-24 focus:outline-none focus:border-gold-500">
-                                        <button onclick="addSouls('${char.id}', 1000)" class="text-xs px-2 py-1 gothic-btn rounded text-gold-300 whitespace-nowrap">+1k</button>
-                                    </div>
-                                </div>
-                                <div class="text-right border-l border-gothic-800/80 pl-2">
-                                    <span class="text-[11px] cinzel text-gold-400/90 block"><i class="fa-solid fa-skull mr-1 text-gold-500"></i> Lifetime Souls</span>
-                                    <span class="text-sm font-mono text-gold-400 font-bold block mt-1">${totalSoulsCollected.toLocaleString()}</span>
-                                </div>
-                            </div>
-
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <span class="text-[11px] cinzel text-gothic-400 block">Next Level Requirement</span>
-                                    <span class="text-xs font-mono font-bold ${char.souls >= nextCost ? 'text-emerald-400' : 'text-gothic-300'}">${nextCost.toLocaleString()} Souls</span>
+                                    <span class="text-[11px] cinzel text-gothic-400 block">Next Level Cost</span>
+                                    <span class="text-sm font-mono font-bold ${canAfford ? 'text-emerald-400' : 'text-blood-400'}">${nextCost.toLocaleString()} Souls</span>
                                 </div>
-                                <button onclick="levelUpCharacter('${char.id}')" class="blood-btn px-3 py-1.5 rounded text-xs cinzel font-bold shadow ${char.souls >= nextCost ? '' : 'opacity-50 cursor-not-allowed'}">
+                                <button onclick="levelUpCharacter('${char.id}')" class="blood-btn px-4 py-2 rounded text-xs cinzel font-bold shadow ${canAfford ? '' : 'opacity-50 cursor-not-allowed'}">
                                     <i class="fa-solid fa-arrow-up mr-1"></i> Level Up
                                 </button>
+                            </div>
+
+                            <!-- Manual Personal Soul Adjuster -->
+                            <div class="pt-2 border-t border-gothic-800/80 flex items-center justify-between text-xs">
+                                <span class="text-gothic-400 text-[11px]">Personal Held Souls:</span>
+                                <div class="flex items-center space-x-1.5">
+                                    <input type="number" value="${char.souls || 0}" onchange="updatePersonalSouls('${char.id}', this.value)" class="bg-gothic-900 border border-gothic-700 rounded px-2 py-0.5 text-gold-400 font-mono text-xs w-20 focus:outline-none focus:border-gold-500">
+                                </div>
                             </div>
                         </div>
 
@@ -684,26 +722,11 @@
             activeBtn.classList.add('bg-gothic-700', 'text-gold-400', 'border', 'border-gold-500/40');
         }
 
-        window.updateSouls = function(charId, val) {
+        window.updatePersonalSouls = function(charId, val) {
             const char = state.characters.find(c => c.id === charId);
             if (char) {
-                const newval = Math.max(0, parseInt(val) || 0);
-                const diff = newval - (char.souls || 0);
-                char.souls = newval;
-                if (diff > 0) {
-                    char.totalSoulsCollected = (char.totalSoulsCollected || 0) + diff;
-                }
+                char.souls = Math.max(0, parseInt(val) || 0);
                 updateAndSync();
-            }
-        }
-
-        window.addSouls = function(charId, amount) {
-            const char = state.characters.find(c => c.id === charId);
-            if (char) {
-                char.souls = (char.souls || 0) + amount;
-                char.totalSoulsCollected = (char.totalSoulsCollected || 0) + amount;
-                updateAndSync();
-                showToast(`Added ${amount} souls!`);
             }
         }
 
@@ -714,12 +737,16 @@
             const totalLevel = calculateTotalLevel(char);
             const cost = calculateNextLevelCost(totalLevel, cls);
 
-            if ((char.souls || 0) < cost) {
-                showToast('Not enough souls to level up!');
+            // Deduct from personal held souls first, then fallback to global pool
+            if ((char.souls || 0) >= cost) {
+                char.souls -= cost;
+            } else if ((state.globalSouls || 0) >= cost) {
+                state.globalSouls -= cost;
+            } else {
+                showToast('Not enough souls in global pool or personal balance!');
                 return;
             }
 
-            char.souls -= cost;
             const firstStat = state.stats[0];
             if (firstStat) {
                 if (!char.stats) char.stats = {};
@@ -812,7 +839,6 @@
                     name,
                     classId,
                     souls,
-                    totalSoulsCollected: souls,
                     avatar: avatar || '',
                     stats: {}
                 });
