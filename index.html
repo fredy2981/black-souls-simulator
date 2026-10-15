@@ -174,7 +174,7 @@
             <div class="flex flex-wrap items-center justify-between gap-4 bg-gothic-900 p-4 rounded-xl gothic-border">
                 <div>
                     <h2 class="cinzel text-lg font-bold text-gold-400">Campaign Roster</h2>
-                    <p class="text-xs text-gothic-400">Level up characters using your global soul pool or adjust individual values.</p>
+                    <p class="text-xs text-gothic-400">Level up characters, perform prestiges, and allocate post-prestige traits.</p>
                 </div>
                 <button onclick="openCreateCharacterModal()" class="blood-btn px-4 py-2 rounded-lg text-sm cinzel font-bold flex items-center shadow-lg">
                     <i class="fa-solid fa-user-plus mr-2"></i> New Character
@@ -575,6 +575,8 @@
                 const canAffordGlobal = (state.globalSouls || 0) >= nextCost;
                 const canAffordPersonal = (char.souls || 0) >= nextCost;
                 const canAfford = canAffordGlobal || canAffordPersonal;
+                const prestigeLevel = char.prestige || 0;
+                const traitsList = char.traits || [];
 
                 return `
                     <div class="bg-gothic-900 border border-gothic-700 rounded-xl p-5 shadow-xl space-y-4 relative overflow-hidden">
@@ -582,12 +584,16 @@
                             <div class="flex items-center space-x-3">
                                 <img src="${avatarSrc}" alt="${char.name}" class="w-14 h-14 rounded-full object-cover border-2 border-gold-500/60 shadow-md">
                                 <div>
-                                    <h3 class="cinzel font-bold text-gold-400 text-lg">${escapeHtml(char.name)}</h3>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="cinzel font-bold text-gold-400 text-lg">${escapeHtml(char.name)}</h3>
+                                        ${prestigeLevel > 0 ? `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] cinzel font-bold"><i class="fa-solid fa-[#d4af37] fa-crown mr-1"></i>Prestige ${prestigeLevel}</span>` : ''}
+                                    </div>
                                     <p class="text-xs text-gothic-400"><i class="fa-solid fa-scroll mr-1"></i> ${escapeHtml(charClass.name)} &bull; Level <span class="text-white font-bold">${totalLevel}</span></p>
                                 </div>
                             </div>
                             <div class="flex space-x-1">
                                 <button onclick="openEditCharacterModal('${char.id}')" title="Edit" class="p-2 text-gothic-400 hover:text-gold-400 transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="prestigeCharacter('${char.id}')" title="Prestige Reset" class="p-2 text-amber-400 hover:text-amber-300 transition"><i class="fa-solid fa-rotate mr-0.5"></i></button>
                                 <button onclick="deleteCharacter('${char.id}')" title="Delete" class="p-2 text-gothic-400 hover:text-blood-400 transition"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
@@ -599,9 +605,14 @@
                                     <span class="text-[11px] cinzel text-gothic-400 block">Next Level Cost</span>
                                     <span class="text-sm font-mono font-bold ${canAfford ? 'text-emerald-400' : 'text-blood-400'}">${nextCost.toLocaleString()} Souls</span>
                                 </div>
-                                <button onclick="levelUpCharacter('${char.id}')" class="blood-btn px-4 py-2 rounded text-xs cinzel font-bold shadow ${canAfford ? '' : 'opacity-50 cursor-not-allowed'}">
-                                    <i class="fa-solid fa-arrow-up mr-1"></i> Level Up
-                                </button>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="prestigeCharacter('${char.id}')" class="gothic-btn px-3 py-2 rounded text-xs cinzel font-bold text-amber-400 border border-amber-500/40 hover:border-amber-400">
+                                        <i class="fa-solid fa-crown mr-1"></i> Prestige
+                                    </button>
+                                    <button onclick="levelUpCharacter('${char.id}')" class="blood-btn px-4 py-2 rounded text-xs cinzel font-bold shadow ${canAfford ? '' : 'opacity-50 cursor-not-allowed'}">
+                                        <i class="fa-solid fa-arrow-up mr-1"></i> Level Up
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Manual Personal Soul Adjuster -->
@@ -611,6 +622,30 @@
                                     <input type="number" value="${char.souls || 0}" onchange="updatePersonalSouls('${char.id}', this.value)" class="bg-gothic-900 border border-gothic-700 rounded px-2 py-0.5 text-gold-400 font-mono text-xs w-20 focus:outline-none focus:border-gold-500">
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Custom Prestige Traits Section -->
+                        <div class="bg-gothic-950 p-3 rounded-lg border border-gothic-800 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs cinzel font-bold text-gold-400"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-400"></i> Character Traits & Prestige Perks</span>
+                                <span class="text-[10px] text-gothic-400 font-mono">${traitsList.length} Active</span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-1.5">
+                                <input type="text" id="trait-input-${char.id}" placeholder="e.g. Born of Fire (+10% STR)" class="w-full bg-gothic-900 border border-gothic-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-gold-500">
+                                <button onclick="addCustomTrait('${char.id}')" class="blood-btn px-3 py-1 rounded text-xs cinzel font-bold whitespace-nowrap"><i class="fa-solid fa-plus mr-1"></i> Add Trait</button>
+                            </div>
+
+                            ${traitsList.length > 0 ? `
+                                <div class="flex flex-wrap gap-1.5 pt-1">
+                                    ${traitsList.map((trait, idx) => `
+                                        <span class="inline-flex items-center space-x-1 bg-gothic-900 border border-gold-500/30 text-gold-300 text-xs px-2 py-0.5 rounded-full">
+                                            <span>${escapeHtml(trait)}</span>
+                                            <button onclick="removeCustomTrait('${char.id}', ${idx})" class="text-gothic-400 hover:text-blood-400 ml-1"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            ` : '<p class="text-[11px] text-gothic-500 italic">No traits added yet. Add custom perks after prestiging!</p>'}
                         </div>
 
                         <!-- Stats Allocation -->
@@ -737,7 +772,6 @@
             const totalLevel = calculateTotalLevel(char);
             const cost = calculateNextLevelCost(totalLevel, cls);
 
-            // Deduct from personal held souls first, then fallback to global pool
             if ((char.souls || 0) >= cost) {
                 char.souls -= cost;
             } else if ((state.globalSouls || 0) >= cost) {
@@ -758,6 +792,51 @@
 
             updateAndSync();
             showToast(`Leveled up to Level ${totalLevel + 1}!`);
+        }
+
+        window.prestigeCharacter = function(charId) {
+            const char = state.characters.find(c => c.id === charId);
+            if (!char) return;
+
+            if (confirm(`Prestige ${char.name}? Stats will reset to base values, and Prestige level will increase!`)) {
+                char.prestige = (char.prestige || 0) + 1;
+                
+                // Reset stats back to base default values
+                state.stats.forEach(st => {
+                    char.stats[st.id] = st.base;
+                });
+
+                updateAndSync();
+                showToast(`${char.name} has Prestiged to Level ${char.prestige}!`);
+            }
+        }
+
+        window.addCustomTrait = function(charId) {
+            const char = state.characters.find(c => c.id === charId);
+            const input = document.getElementById(`trait-input-${charId}`);
+            if (!char || !input) return;
+
+            const traitText = input.value.trim();
+            if (!traitText) {
+                showToast('Please type a trait description!');
+                return;
+            }
+
+            if (!char.traits) char.traits = [];
+            char.traits.push(traitText);
+            input.value = '';
+
+            updateAndSync();
+            showToast(`Added trait: "${traitText}"`);
+        }
+
+        window.removeCustomTrait = function(charId, idx) {
+            const char = state.characters.find(c => c.id === charId);
+            if (char && char.traits) {
+                char.traits.splice(idx, 1);
+                updateAndSync();
+                showToast('Trait removed.');
+            }
         }
 
         window.adjustStat = function(charId, statId, delta) {
@@ -839,6 +918,8 @@
                     name,
                     classId,
                     souls,
+                    prestige: 0,
+                    traits: [],
                     avatar: avatar || '',
                     stats: {}
                 });
