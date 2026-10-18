@@ -944,6 +944,12 @@
             const checkboxes = document.querySelectorAll('.char-stat-checkbox');
             const allowedStats = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
 
+            // Pre-populate default base stats for reliable live level ups
+            const initialStats = {};
+            state.stats.forEach(st => {
+                initialStats[st.id] = st.base;
+            });
+
             if (id) {
                 const char = state.characters.find(c => c.id === id);
                 if (char) {
@@ -963,7 +969,7 @@
                     traits: [],
                     allowedStats: allowedStats,
                     avatar: avatar || '',
-                    stats: {}
+                    stats: initialStats
                 });
             }
 
